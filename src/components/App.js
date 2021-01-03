@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Menu, MenuItem, Table, TableContainer, TableBody, TableRow, TableHead, TableCell, TableFooter, IconButton } from '@material-ui/core';
-import { MusicNote, MoreHoriz } from '@material-ui/icons';
+import { Table, TableContainer, TableBody, TableRow, TableHead, TableCell, IconButton } from '@material-ui/core';
+import { Stop, PlayCircleFilled, } from '@material-ui/icons';
 
 import { MusicDirectory, deleteFile, getSongPath } from '../lib/files';
 import { UploadButton } from './UploadButton';
@@ -43,6 +43,7 @@ const App = () => {
 
     const handlePlay = () => {
         handleClose();
+        if (!selectedSong) return;
         console.log('Playing', selectedSong);
         toAudio(getSongPath(selectedSong)).then(audio => {
             playAudio(audio).then(() => {
@@ -57,7 +58,7 @@ const App = () => {
 
     const handleStop = () => {
         handleClose();
-        if (playingSong) {
+        if (playingSong && playingSong.audio) {
             playingSong.audio.pause();
             delete playingSong.audio;
             setPlayingSong({
@@ -89,34 +90,11 @@ const App = () => {
             return (
                 <TableRow
                     key={file}
-                    hover={true}
+                    hover
+                    selected={file === selectedSong}
+                    onClick={e => handleClick(e, file)}
                 >
                     <TableCell key={index.toString()}>{file}</TableCell>
-                    <TableCell>
-                        <IconButton onClick={e => handleClick(e, file)}>
-                            <MoreHoriz/>
-                        </IconButton>
-                        <Menu
-                            id='simple-menu'
-                            anchorEl={anchorEl}
-                            getContentAnchorEl={null}
-                            transformOrigin={{
-                                vertical: 'top',
-                                horizontal: 'left'
-                            }}
-                            anchorOrigin={{
-                                vertical: 'center',
-                                horizontal: 'center'
-                            }}
-                            open={Boolean(anchorEl)}
-                            keepMounted
-                            onClose={handleClose}
-                        >
-                            <MenuItem id='play' onClick={handlePlay}>Play</MenuItem>
-                            <MenuItem id='delete' onClick={handleDelete}>Delete</MenuItem>
-                            <MenuItem id='stop' onClick={handleStop}>Stop</MenuItem>
-                        </Menu>
-                    </TableCell>
                 </TableRow>
             );
         });
@@ -124,8 +102,8 @@ const App = () => {
 
 	return (
 		<div className='app'>
-            <TableContainer>
-                <Table>
+            <TableContainer style={{ maxHeight: '500px' }}>
+                <Table stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell colSpan={2}>Name</TableCell>
@@ -134,15 +112,17 @@ const App = () => {
                     <TableBody>
                         {renderFiles(files)}
                     </TableBody>
-                    <TableFooter>
-                        <TableRow>
-                            <TableCell colSpan={2} align='right'>
-                                <UploadButton onNewFiles={handleNewFiles}/>
-                            </TableCell>
-                        </TableRow>
-                    </TableFooter>
                 </Table>
             </TableContainer>
+            <UploadButton onNewFiles={handleNewFiles}/>
+            { playingSong && playingSong.playing ?
+                <IconButton onClick={handleStop}>
+                    <Stop/>
+                </IconButton> :
+                <IconButton onClick={handlePlay}>
+                    <PlayCircleFilled/>
+                </IconButton>
+            }
 		</div>
 	);
 }

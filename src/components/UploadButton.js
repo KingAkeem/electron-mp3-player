@@ -30,7 +30,7 @@ export const UploadButton = ({ onNewFiles }) => {
 
     return (
         <React.Fragment>
-            <IconButton onClick={handleUpload}>
+            <IconButton size='small' onClick={handleUpload}>
                 Upload Songs<MusicNote/>
             </IconButton>
         </React.Fragment>
