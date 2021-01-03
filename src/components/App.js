@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Table, TableContainer, TableBody, TableRow, TableHead, TableCell, IconButton } from '@material-ui/core';
-import { Stop, PlayCircleFilled, } from '@material-ui/icons';
+import { Delete, Stop, PlayCircleFilled, } from '@material-ui/icons';
 
 import { MusicDirectory, deleteFile, getSongPath } from '../lib/files';
 import { UploadButton } from './UploadButton';
@@ -122,6 +122,12 @@ const App = () => {
                 <IconButton onClick={handlePlay}>
                     <PlayCircleFilled/>
                 </IconButton>
+            }
+            {
+                selectedSong ? 
+                <IconButton onClick={handleDelete}>
+                    <Delete/>
+                </IconButton> : null
             }
 		</div>
 	);
