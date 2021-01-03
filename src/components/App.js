@@ -1,14 +1,16 @@
 import React, { useState } from 'react'
 import { Menu, MenuItem, Table, TableContainer, TableBody, TableRow, TableHead, TableCell, TableFooter, IconButton } from '@material-ui/core';
 import { MusicNote, MoreHoriz } from '@material-ui/icons';
+import http from 'http';
 import fs from 'fs';
+import dataurl from 'dataurl';
 import path from 'path';
-import { exec } from 'child_process';
-import sanitize from 'sanitize-filename';
 import { remote }  from 'electron';
 const dialog = remote.dialog;
 
 const MusicDirectory = 'music';
+const getSongPath = song => path.join(MusicDirectory, song);
+
 const createDirectory = (dir) => {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir);
@@ -48,7 +50,7 @@ const selectFiles = () => {
 const uploadFiles = () => {
     const filePaths = selectFiles();
     const copiedFiles = moveToDirectory(filePaths, MusicDirectory);
-    return copiedFiles
+    return copiedFiles;
 };
 
 const UploadButton = ({ onNewFiles }) => {
@@ -67,38 +69,74 @@ const UploadButton = ({ onNewFiles }) => {
 };
 
 const App = () => {
-    const [names, setNames] = useState(fs.readdirSync(MusicDirectory));
-    const [selected, setSelected] = useState(null);
     const [anchorEl, setAnchorEl] = useState(null);
-    const handleNewFiles = (newNames) => setNames([...names, ...newNames]);
+    const [files, setFiles] = useState(new Set(fs.readdirSync(MusicDirectory)));
+    const [playingSong, setPlayingSong] = useState(null);
+    const [selectedSong, setSelectedSong] = useState(null);
+    const [currentTrack, setTrack] = useState({ track: null, data: null, playing: false });
 
-    const handleClick = (event, file) => {
-        setAnchorEl(event.currentTarget);
-        setSelected(file);
-    };
+    // Close context menu
+    const handleClose = () => setAnchorEl(null);
 
-    const handleClose = () => {
-        setAnchorEl(null);
+    // Add new files
+    const handleNewFiles = newFiles => setFiles(new Set([...files, ...newFiles]));
+
+    // Select new file
+    const handleClick = (evt, file) => {
+        setAnchorEl(evt.currentTarget);
+        const filePath = getSongPath(file);
+        setSelectedSong(filePath);
     };
 
     const handlePlay = () => {
         handleClose();
-        console.log('Playing', selected);
-        const filePath = path.join(MusicDirectory, selected).replace(/(\s+)/g, '\\$1');
-        const childProcess = exec(`mpg123 ${filePath}`);
-        window.audio = childProcess;
-        childProcess.kill('SIGINT');
+        console.log('Playing', selectedSong);
+        fs.readFile(selectedSong, (err, data) => {
+            if (err) throw err;
+            const songData = dataurl.convert({data, mimetype: 'audio/mp3'});
+            const audio = new Audio(songData);
+            audio.addEventListener('canplay', () => {
+                audio.play();
+                setPlayingSong({
+                    track: selectedSong,
+                    audio,
+                    playing: true
+                });
+            });
+        });
+    };
+
+    const handleStop = () => {
+        handleClose();
+        if (playingSong) {
+            playingSong.audio.pause();
+            delete playingSong.audio;
+            setPlayingSong({
+                track: null,
+                audio: null,
+                playing: false
+            });
+        }
     };
 
     const handleDelete = () => {
         handleClose();
-        deleteFile(selected, MusicDirectory);
-        setNames(names.filter(name => name !== selected));
-        console.log('deleting', selected);
+        deleteFile(selectedSong, MusicDirectory);
+        setFiles(files.filter(file => file !== selectedSong));
+        if (playingSong && selectedSong === playingSong.track) {
+            playingSong.audio.pause();
+            delete playingSong.audio;
+            setPlayingSong({
+                track: null,
+                audio: null,
+                playing: false,
+            });
+        }
+        setSelectedSong(null);
     };
 
     const renderFiles = files => {
-        return files.map((file, index) => {
+        return Array.from(files).map((file, index) => {
             return (
                 <TableRow
                     key={file}
@@ -106,7 +144,7 @@ const App = () => {
                 >
                     <TableCell key={index.toString()}>{file}</TableCell>
                     <TableCell>
-                        <IconButton onClick={(e) => handleClick(e, file)}>
+                        <IconButton onClick={e => handleClick(e, file)}>
                             <MoreHoriz/>
                         </IconButton>
                         <Menu
@@ -127,6 +165,7 @@ const App = () => {
                         >
                             <MenuItem id='play' onClick={handlePlay}>Play</MenuItem>
                             <MenuItem id='delete' onClick={handleDelete}>Delete</MenuItem>
+                            <MenuItem id='stop' onClick={handleStop}>Stop</MenuItem>
                         </Menu>
                     </TableCell>
                 </TableRow>
@@ -144,7 +183,7 @@ const App = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {renderFiles(names)}
+                        {renderFiles(files)}
                     </TableBody>
                     <TableFooter>
                         <TableRow>
