@@ -1,79 +1,33 @@
 import React, { useState } from 'react'
 import { Menu, MenuItem, Table, TableContainer, TableBody, TableRow, TableHead, TableCell, TableFooter, IconButton } from '@material-ui/core';
 import { MusicNote, MoreHoriz } from '@material-ui/icons';
-import http from 'http';
+
+import { MusicDirectory, deleteFile, getSongPath } from '../lib/files';
+import { UploadButton } from './UploadButton';
 import fs from 'fs';
 import dataurl from 'dataurl';
-import path from 'path';
-import { remote }  from 'electron';
-const dialog = remote.dialog;
+import mime from 'mime-types';
 
-const MusicDirectory = 'music';
-const getSongPath = song => path.join(MusicDirectory, song);
-
-const createDirectory = (dir) => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir);
-    }
-};
-
-const moveToDirectory = (filePaths, dir) => {
-    const copiedFiles = [];
-    // Create directory if it doesn't exist.
-    createDirectory(dir);
-    filePaths.forEach(filePath => {
-        const file = path.basename(filePath);
-        // Join directory with file to create a new path.
-        const newPath = path.join(dir, file);
-        fs.copyFileSync(filePath, newPath);
-        copiedFiles.push(file);
+const toAudio = file => new Promise(function(resolve, reject) {
+    fs.readFile(file, (err, data) => {
+        if (err) reject(err);
+        const songData = dataurl.convert({ data, mimetype: mime.lookup(file) });
+        resolve(new Audio(songData));
     });
-    return copiedFiles;
-};
+});
 
-const deleteFile = (file, dir) => {
-    const dest = path.join(dir, file);
-    fs.unlinkSync(dest);
-};
-
-const selectFiles = () => {
-    const dialgProperties = {
-        title: 'Select Music',
-        buttonLabel: 'Save Songs',
-        filters: [{name: 'Music', extensions: ['mp3']}, {name: 'Video', extensions: ['mp4']}],
-        properties: [ 'openFile', 'multiSelections']
-    };
-    const paths = dialog.showOpenDialogSync(dialgProperties);
-    return paths || [];
-};
-
-const uploadFiles = () => {
-    const filePaths = selectFiles();
-    const copiedFiles = moveToDirectory(filePaths, MusicDirectory);
-    return copiedFiles;
-};
-
-const UploadButton = ({ onNewFiles }) => {
-    const handleUpload = () => {
-        const files = uploadFiles();
-        onNewFiles(files);
-    };
-
-    return (
-        <React.Fragment>
-            <IconButton onClick={handleUpload}>
-                Upload Songs<MusicNote/>
-            </IconButton>
-        </React.Fragment>
-    );
-};
+const playAudio = audio => new Promise(function(resolve, reject) {
+    audio.addEventListener('canplay', evt => {
+        audio.play();
+        resolve(evt);
+    });
+});
 
 const App = () => {
     const [anchorEl, setAnchorEl] = useState(null);
     const [files, setFiles] = useState(new Set(fs.readdirSync(MusicDirectory)));
     const [playingSong, setPlayingSong] = useState(null);
     const [selectedSong, setSelectedSong] = useState(null);
-    const [currentTrack, setTrack] = useState({ track: null, data: null, playing: false });
 
     // Close context menu
     const handleClose = () => setAnchorEl(null);
@@ -84,19 +38,14 @@ const App = () => {
     // Select new file
     const handleClick = (evt, file) => {
         setAnchorEl(evt.currentTarget);
-        const filePath = getSongPath(file);
-        setSelectedSong(filePath);
+        setSelectedSong(file);
     };
 
     const handlePlay = () => {
         handleClose();
         console.log('Playing', selectedSong);
-        fs.readFile(selectedSong, (err, data) => {
-            if (err) throw err;
-            const songData = dataurl.convert({data, mimetype: 'audio/mp3'});
-            const audio = new Audio(songData);
-            audio.addEventListener('canplay', () => {
-                audio.play();
+        toAudio(getSongPath(selectedSong)).then(audio => {
+            playAudio(audio).then(() => {
                 setPlayingSong({
                     track: selectedSong,
                     audio,
@@ -122,7 +71,7 @@ const App = () => {
     const handleDelete = () => {
         handleClose();
         deleteFile(selectedSong, MusicDirectory);
-        setFiles(files.filter(file => file !== selectedSong));
+        setFiles(new Set(Array.from(files).filter(file => file !== selectedSong)));
         if (playingSong && selectedSong === playingSong.track) {
             playingSong.audio.pause();
             delete playingSong.audio;
