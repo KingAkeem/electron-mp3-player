@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Table, TableContainer, TableBody, TableRow, TableHead, TableCell, IconButton } from '@material-ui/core';
 import { Delete, Stop, PlayCircleFilled, } from '@material-ui/icons';
 
-import { MusicDirectory, deleteFile, getSongPath } from '../lib/files';
+import { FileManager, getSongPath } from '../lib/files';
 import { UploadButton } from './UploadButton';
 import fs from 'fs';
 import dataurl from 'dataurl';
@@ -24,44 +24,39 @@ const playAudio = audio => new Promise(function(resolve, reject) {
 });
 
 const App = () => {
-    const [anchorEl, setAnchorEl] = useState(null);
-    const [files, setFiles] = useState(new Set(fs.readdirSync(MusicDirectory)));
-    const [playingSong, setPlayingSong] = useState(null);
+    const manager = new FileManager('music');
+    const [files, setFiles] = useState(manager.files);
+    const [track, setTrack] = useState(null);
     const [selectedSong, setSelectedSong] = useState(null);
 
-    // Close context menu
-    const handleClose = () => setAnchorEl(null);
-
     // Add new files
-    const handleNewFiles = newFiles => setFiles(new Set([...files, ...newFiles]));
+    const handleNewFiles = newFiles => {
+        manager.insertFiles(newFiles);
+        setFiles([...files, ...newFiles]);
+    };
 
     // Select new file
     const handleClick = (evt, file) => {
-        setAnchorEl(evt.currentTarget);
         setSelectedSong(file);
     };
 
     const handlePlay = () => {
-        handleClose();
         if (!selectedSong) return;
         console.log('Playing', selectedSong);
-        toAudio(getSongPath(selectedSong)).then(audio => {
-            playAudio(audio).then(() => {
-                setPlayingSong({
-                    track: selectedSong,
-                    audio,
-                    playing: true
-                });
+        manager.playAudio(selectedSong).then(audio => {
+            setTrack({
+                track: selectedSong,
+                audio,
+                playing: true
             });
-        });
+        })
     };
 
     const handleStop = () => {
-        handleClose();
-        if (playingSong && playingSong.audio) {
-            playingSong.audio.pause();
-            delete playingSong.audio;
-            setPlayingSong({
+        if (track && track.audio) {
+            track.audio.pause();
+            delete track.audio;
+            setTrack({
                 track: null,
                 audio: null,
                 playing: false
@@ -70,13 +65,12 @@ const App = () => {
     };
 
     const handleDelete = () => {
-        handleClose();
-        deleteFile(selectedSong, MusicDirectory);
-        setFiles(new Set(Array.from(files).filter(file => file !== selectedSong)));
-        if (playingSong && selectedSong === playingSong.track) {
-            playingSong.audio.pause();
-            delete playingSong.audio;
-            setPlayingSong({
+        manager.removeFiles([selectedSong]);
+        setFiles(manager.files);
+        if (track && selectedSong === track.track) {
+            track.audio.pause();
+            delete track.audio;
+            setTrack({
                 track: null,
                 audio: null,
                 playing: false,
@@ -115,7 +109,7 @@ const App = () => {
                 </Table>
             </TableContainer>
             <UploadButton onNewFiles={handleNewFiles}/>
-            { playingSong && playingSong.playing ?
+            { track && track.playing ?
                 <IconButton onClick={handleStop}>
                     <Stop/>
                 </IconButton> :
