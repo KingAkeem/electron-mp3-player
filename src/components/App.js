@@ -54,48 +54,13 @@ const RecursiveTreeView = props => {
   );
 };
 
-const buildTree = (parentDir, tree = { id: 'root', displayName: 'tree', children: [] }, fileList = []) => {
-    const fileNames = fs.readdirSync(parentDir);
-    fileList.push(...fileNames);
-    fileNames.sort().forEach(fileName => {
-        const filePath = path.join(parentDir, fileName);
-        if (isDirectory(filePath)) {
-            console.log(filePath);
-            const node = {
-                id: filePath,
-                displayName: fileName,
-                children: []
-            };
-            tree.children.push(node);
-            buildTree(filePath, node, fileList);
-        } else {
-            tree.children.push({
-                id: filePath,
-                displayName: fileName,
-            });
-        }
-    });
-    return { tree, fileList };
-};
-
-const App = () => {
-    const { tree, fileList } = buildTree('music', { id: 'root', displayName: 'Music', children: [] });
-    const [files, setFiles] = useState(fileList);
+const App = props => {
+    const { tree } = props;
     const [track, setTrack] = useState(null);
     const [selectedSong, setSelectedSong] = useState(null);
 
-    // Add new files
-    const handleNewFiles = ({ folders: newFolders, files: newFiles }) => {
-        setFiles([...files, ...newFiles]);
-    };
-
-    // Select new file
-    const handleClick = file => setSelectedSong(file);
-
-
-    const removeFileFromDisk = fileName => {
-        const dest = path.join('music', fileName);
-        fs.unlinkSync(dest);
+    const removeFileFromDisk = filePath => {
+        fs.unlinkSync(filePath);
     };
     const isPlaying = song => track && track.track === song;
     const stopAudio = () => {
@@ -113,8 +78,7 @@ const App = () => {
     const handlePlay = () => {
         if (!selectedSong) return;
         console.log('Playing', selectedSong);
-        const filePath = path.join('music', selectedSong);
-        toAudio(filePath).then(audio => {
+        toAudio(selectedSong).then(audio => {
             playAudio(audio).then(() => {
                 setTrack({
                     track: selectedSong,
@@ -128,28 +92,19 @@ const App = () => {
     const handleStop = () => stopAudio();
 
     const handleDelete = () => {
-        const remainingFiles = files.filter(file => file !== selectedSong);
-        setFiles(remainingFiles);
         removeFileFromDisk(selectedSong);
         if (isPlaying(selectedSong)) stopAudio();
         setSelectedSong(null);
     };
 
-    const data = {
-        id: 'root',
-        name: 'Music',
-        children: []
+    const handleNewFiles = ({ folders, files}) => {
+        console.log('New files', files);
+        console.log('New folders', folders);
     };
-
-    Array.from(new Set(files.sort())).forEach((file, index) => {
-        data.children.push({ id: index.toString(), displayName: path.basename(file) });
-    });
-
     return (
         <div className='app'>
-            <RecursiveTreeView tree={tree} onNodeSelect={index => {
-                    const file = files[index];
-                    handleClick(file);
+            <RecursiveTreeView tree={tree} onNodeSelect={filePath => {
+                    setSelectedSong(filePath);
                 }}/>
             <UploadButton onNewFiles={handleNewFiles}/>
             { track && track.playing ?
