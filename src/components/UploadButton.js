@@ -1,12 +1,14 @@
 import React from 'react';
-import fs from 'fs';
-import path from 'path';
 import { MusicNote } from '@material-ui/icons';
 import { IconButton } from '@material-ui/core';
+
+import fs from 'fs';
+import path from 'path';
 import { remote } from 'electron';
-import { createDirectory, moveToDirectory } from '../fileUtils';
-import { remove } from 'lodash';
 const dialog = remote.dialog;
+import { remove } from 'lodash';
+
+import { isFolder, copyToFolder } from '../lib/file';
 
 const selectFiles = () => {
     const dialgProperties = {
@@ -20,18 +22,15 @@ const selectFiles = () => {
 };
 
 const extractFolderPaths = filePaths => {
-    return remove(filePaths, filePath => {
-        const stats = fs.lstatSync(filePath);
-        return stats.isDirectory();
-    });
+    return remove(filePaths, filePath => isFolder(filePath));
 };
 
 export const UploadButton = ({ onNewFiles }) => {
     const handleUpload = () => {
         const filePaths = selectFiles();
         const folderPaths = extractFolderPaths(filePaths);
-        moveToDirectory(filePaths, 'music');
-        moveToDirectory(folderPaths, 'music');
+        copyToFolder(filePaths, 'music');
+        copyToFolder(folderPaths, 'music');
         onNewFiles({ folders: folderPaths, files: filePaths });
     };
 

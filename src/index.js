@@ -1,8 +1,6 @@
 import React from 'react'
 import { render } from 'react-dom'
-import fs from 'fs';
-import path from 'path';
-import { isDirectory } from './fileUtils';
+import { Folder } from './lib/file';
 import App from './components/App'
 import './App.css'
 
@@ -12,27 +10,12 @@ let root = document.createElement('div')
 root.id = 'root'
 document.body.appendChild(root)
 
-// Now we can render our application into it
-const fileList = [];
-const buildTree = (parentDir, tree = { id: 'root', displayName: 'tree', children: [] }) => {
-    const fileNames = fs.readdirSync(parentDir);
-    fileNames.forEach(fileName => {
-        const filePath = path.join(parentDir, fileName)
-        if (isDirectory(filePath)) {
-            const node = {
-                id: filePath,
-                displayName: fileName,
-                children: []
-            };
-            tree.children.push(node);
-            buildTree(filePath, node);
-        } else {
-            tree.children.push({
-                id: filePath,
-                displayName: fileName,
-            });
-        }
-    });
-    return tree;
-};
-render(<App files={fileList} tree={buildTree('music')}/>, document.getElementById('root'))
+const folder = new Folder({
+    id: 'music',
+    name: 'music',
+    path: 'music',
+    type: 'folder',
+    children: [],
+});
+folder.loadContents();
+render(<App rootFolder={folder}/>, document.getElementById('root'))
