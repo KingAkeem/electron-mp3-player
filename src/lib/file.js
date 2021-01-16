@@ -43,18 +43,20 @@ export class Folder {
         });
     }
 
-    remove(filePath) {
+    remove(filePaths) {
         return produce(this, draft => {
-            for (let i = 0; i < draft.children.length; i++) {
-                const file = draft.children[i];
-                if (file.path === filePath) {
-                    deleteFile(filePath);
-                    const [file] = draft.children.splice(i, 1);
-                    draft.childMap.delete(file.id);
-                    return;
+            filePaths.forEach(filePath => {
+                for (let i = 0; i < draft.children.length; i++) {
+                    let file = draft.children[i];
+                    if (file.path === filePath) {
+                        deleteFile(filePath);
+                        const [removedFile] = draft.children.splice(i, 1);
+                        draft.childMap.delete(removedFile.id);
+                        return;
+                    }
+                    if (file.type === 'folder') file.remove(filePaths);
                 }
-                if (file.type === 'folder') draft.remove(file);
-            }
+            });
         });
     }
 
@@ -68,17 +70,19 @@ export class Folder {
 }
 
 const buildFolder = (folder, fileMap = {}) => {
+    // load contents before reading file
     fileMap[folder.id] = folder;
     const fileNames = fs.readdirSync(folder.path);
     fileNames.forEach(fileName => {
         const filePath = path.join(folder.path, fileName)
         if (isFolder(filePath)) {
-            const subFolder = new Folder({
+            let subFolder = new Folder({
                 id: filePath,
                 path: filePath,
                 name: fileName,
             });
             fileMap[subFolder.id] = subFolder;
+            subFolder = subFolder.loadContents();
             folder = folder.add([subFolder]);
             buildFolder(subFolder);
         } else {

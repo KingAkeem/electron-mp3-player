@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { IconButton } from '@material-ui/core';
+import { createMuiTheme, IconButton, Paper, ThemeProvider } from '@material-ui/core';
 import {  Delete, Stop, PlayCircleFilled, } from '@material-ui/icons';
 
 import { FileTree } from './FileTree';
@@ -7,10 +7,16 @@ import { UploadButton } from './UploadButton';
 
 import { playAudio } from '../lib/media-player/audio';
 
+
+const darkTheme = createMuiTheme({
+    palette: {
+        type: 'dark'
+    }
+});
 const App = props => {
     const [track, setTrack] = useState(null);
     const [folder, setFolder] = useState(props.rootFolder);
-    const [currentFilePath, setCurrentFilePath] = useState(null);
+    const [paths, setPaths] = useState([]);
 
     // Determines if song is currently being played
     const isPlaying = song => track && track.track === song;
@@ -28,11 +34,12 @@ const App = props => {
     };
 
     const handlePlay = () => {
-        if (!currentFilePath) return;
-        console.log('Playing', currentFilePath);
-        playAudio(currentFilePath).then(audio => {
+        // If track is already playing then do nothing.
+        if (track) return;
+        console.log('Playing', paths[0]);
+        playAudio(paths[0]).then(audio => {
             setTrack({
-                track: currentFilePath,
+                track: paths[0],
                 audio,
                 playing: true
             });
@@ -42,9 +49,10 @@ const App = props => {
     const handleStop = () => stopAudio();
 
     const handleDelete = () => {
-        setFolder(folder.remove(currentFilePath));
-        if (isPlaying(currentFilePath)) stopAudio();
-        setCurrentFilePath(null);
+        setFolder(folder.remove(paths));
+        paths.forEach(currentPath => {
+            if (isPlaying(currentPath)) stopAudio();
+        });
     };
 
     const handleNewFiles = ({ resolutions: newFiles, rejections }) => {
@@ -58,21 +66,27 @@ const App = props => {
     };
 
     return (
-        <div className='app'>
-            <UploadButton onNewFiles={handleNewFiles}/>
-            {track && track.playing ?
-                <IconButton onClick={handleStop}>
-                    <Stop/>
-                </IconButton> :
-                <IconButton onClick={handlePlay}>
-                    <PlayCircleFilled/>
-                </IconButton>}
-            {currentFilePath ?
-                <IconButton onClick={handleDelete}>
-                    <Delete/>
-                </IconButton> : null}
-            <FileTree root={folder} onNodeSelect={filePath => setCurrentFilePath(filePath)}/>
-        </div>
+            <div className='app'>
+                <ThemeProvider theme={darkTheme}>
+                    <Paper>
+                    <UploadButton onNewFiles={handleNewFiles}/>
+                    {paths.length === 1 ? track && track.playing ?
+                        <IconButton onClick={handleStop}>
+                            <Stop/>
+                        </IconButton> :
+                        <IconButton onClick={handlePlay}>
+                            <PlayCircleFilled/>
+                        </IconButton> : null}
+                    {paths.length > 0 ?
+                        <IconButton onClick={handleDelete}>
+                            <Delete/>
+                        </IconButton> : null}
+                        <FileTree root={folder} onNodeSelect={filePaths => {
+                            setPaths(filePaths);
+                        }}/>
+                    </Paper>
+                </ThemeProvider>
+            </div>
     );
 }
 
