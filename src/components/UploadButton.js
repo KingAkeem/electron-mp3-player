@@ -2,8 +2,6 @@ import React from 'react';
 import { MusicNote } from '@material-ui/icons';
 import { IconButton } from '@material-ui/core';
 
-import fs from 'fs';
-import path from 'path';
 import { remote } from 'electron';
 const dialog = remote.dialog;
 import { remove } from 'lodash';

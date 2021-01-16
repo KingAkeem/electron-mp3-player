@@ -63,7 +63,7 @@ export class Folder {
         return produce(this, draft => {
             draft = Object.assign(draft, folder);
             draft.childMap = new Map(Object.entries(fileMap));
-        })
+        });
     }
 }
 
@@ -116,10 +116,15 @@ export function copyToFolder(filePaths, folderPath) {
             path: destFilePath,
             id: destFilePath
         };
-        const fileData = isFolder(filePath) ? new Folder(metadata) : new File(metadata);
+        let fileData = isFolder(filePath) ? new Folder(metadata) : new File(metadata);
         try {
             // Recursively copies files from folder
-            isFolder(filePath) ? fse.copySync(filePath, destFilePath) : fs.copyFileSync(filePath, destFilePath);
+            if (isFolder(filePath)) {
+                fse.copySync(filePath, destFilePath)
+                fileData = fileData.loadContents();
+            } else {
+                fs.copyFileSync(filePath, destFilePath)
+            }
             resolutions.push(fileData);
         } catch(err) {
             rejections.push({ fileData, error: err });

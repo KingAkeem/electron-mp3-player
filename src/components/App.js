@@ -1,34 +1,11 @@
 import React, { useState } from 'react'
-import { TreeView, TreeItem } from '@material-ui/lab';
 import { IconButton } from '@material-ui/core';
-import { ExpandMore, ChevronRight, Delete, Stop, PlayCircleFilled, } from '@material-ui/icons';
+import {  Delete, Stop, PlayCircleFilled, } from '@material-ui/icons';
 
+import { FileTree } from './FileTree';
 import { UploadButton } from './UploadButton';
 
-import fs from 'fs';
-
 import { playAudio } from '../lib/media-player/audio';
-import { isFolder } from '../lib/file';
-
-const FolderView = props => {
-  const { folder, onNodeSelect } = props;
-  const renderFile = file => (
-    <TreeItem key={file.id} nodeId={file.id} label={file.name}>
-      {file.type === 'folder' ? file.children.map(file => renderFile(file)) : null}
-    </TreeItem>
-  );
-
-  return (
-    <TreeView
-      defaultCollapseIcon={<ExpandMore />}
-      defaultExpanded={['root']}
-      defaultExpandIcon={<ChevronRight />}
-      onNodeSelect={(event, id) => onNodeSelect(id)}
-    >
-      {folder.children.map(subFolder => renderFile(subFolder))}
-    </TreeView>
-  );
-};
 
 const App = props => {
     const [track, setTrack] = useState(null);
@@ -70,8 +47,14 @@ const App = props => {
         setCurrentFilePath(null);
     };
 
-    const handleNewFiles = ({ resolutions, rejections }) => {
-        setFolder(folder.add(resolutions));
+    const handleNewFiles = ({ resolutions: newFiles, rejections }) => {
+        if (Array.isArray(rejections) && rejections.length) {
+            rejections.forEach(rejection => {
+                const { fileData, error } = rejection;
+                console.error(`${fileData} encountered error: ${error}`);
+            });
+        }
+        setFolder(folder.add(newFiles));
     };
 
     return (
@@ -88,7 +71,7 @@ const App = props => {
                 <IconButton onClick={handleDelete}>
                     <Delete/>
                 </IconButton> : null}
-            <FolderView folder={folder} onNodeSelect={filePath => setCurrentFilePath(filePath)}/>
+            <FileTree root={folder} onNodeSelect={filePath => setCurrentFilePath(filePath)}/>
         </div>
     );
 }
