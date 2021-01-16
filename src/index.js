@@ -14,8 +14,5 @@ const folder = new Folder({
     id: 'music',
     name: 'music',
     path: 'music',
-    type: 'folder',
-    children: [],
 });
-folder.loadContents();
-render(<App rootFolder={folder}/>, document.getElementById('root'))
+render(<App rootFolder={folder.loadContents()}/>, document.getElementById('root'))

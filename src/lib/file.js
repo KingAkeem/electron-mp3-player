@@ -1,9 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import fse from 'fs-extra';
+import {enableMapSet,immerable, produce} from 'immer';
+enableMapSet();
 
 export class File {
-    constructor({ id, name, path, type }) {
+    constructor({ id, name, path }) {
+        this[immerable] = true;
         this.id = id;
         this.name = name;
         this.path = path;
@@ -11,8 +14,16 @@ export class File {
     }
 }
 
+const deleteFile = filePath => {
+    if (isFolder(filePath)) fs.rmdirSync(filePath, {
+        recursive: true
+    });
+    else fs.unlinkSync(filePath);
+};
+
 export class Folder {
-    constructor({ id, name, path, type, children }) {
+    constructor({ id, name, path, children }) {
+        this[immerable] = true;
         this.id = id;
         this.name = name;
         this.path = path;
@@ -21,16 +32,38 @@ export class Folder {
         this.childMap = new Map();
     }
 
-    loadContents() {
-        const { folder, fileMap } = buildFolder({
-            id: this.id,
-            name: this.name,
-            path: this.path,
-            type: this.type,
-            children: this.children
+    add(files) {
+        return produce(this, draft => {
+            files.forEach(file => {
+                if (!draft.childMap.has(file.id)) {
+                    draft.childMap.set(file.id, file);
+                    draft.children.push(file);
+                }
+            });
         });
-        Object.assign(this, folder);
-        this.childMap = new Map(Object.entries(fileMap));
+    }
+
+    remove(filePath) {
+        return produce(this, draft => {
+            for (let i = 0; i < draft.children.length; i++) {
+                const file = draft.children[i];
+                if (file.path === filePath) {
+                    deleteFile(filePath);
+                    const [file] = draft.children.splice(i, 1);
+                    draft.childMap.delete(file.id);
+                    return;
+                }
+                if (file.type === 'folder') draft.remove(file);
+            }
+        });
+    }
+
+    loadContents() {
+        const { folder, fileMap } = buildFolder(this);
+        return produce(this, draft => {
+            draft = Object.assign(draft, folder);
+            draft.childMap = new Map(Object.entries(fileMap));
+        })
     }
 }
 
@@ -46,7 +79,7 @@ const buildFolder = (folder, fileMap = {}) => {
                 name: fileName,
             });
             fileMap[subFolder.id] = subFolder;
-            folder.children.push(subFolder);
+            folder = folder.add([subFolder]);
             buildFolder(subFolder);
         } else {
             const fileInFolder = new File({
@@ -55,7 +88,7 @@ const buildFolder = (folder, fileMap = {}) => {
                 name: fileName,
             });
             fileMap[fileInFolder.id] = fileInFolder;
-            folder.children.push(fileInFolder);
+            folder = folder.add([fileInFolder]);
         }
     });
     return { folder, fileMap };
@@ -70,30 +103,27 @@ export function isFolder(filePath) {
     return stat.isDirectory();
 };
 
-function copyData(srcFilePath, destFolder) {
-    const fileName = path.basename(srcFilePath);
-    const destFilePath = path.join(destFolder, fileName);
-    if (isFolder(srcFilePath)) {
-        // Recursively copies files from folder
-        fse.copySync(srcFilePath, destFilePath);
-    } else {
-        fs.copyFileSync(srcFilePath, destFilePath);
-    }
-    return destFilePath;
-};
-
 export function copyToFolder(filePaths, folderPath) {
-    const copiedFiles = [];
+    const resolutions = [];
+    const rejections = [];
     // Create folder if it doesn't exist.
     createFolder(folderPath);
     filePaths.forEach(filePath => {
+        const fileName = path.basename(filePath);
+        const destFilePath = path.join(folderPath, fileName);
+        const metadata = {
+            name: fileName,
+            path: destFilePath,
+            id: destFilePath
+        };
+        const fileData = isFolder(filePath) ? new Folder(metadata) : new File(metadata);
         try {
-            const newFilePath = copyData(filePath, folderPath);
-            const newFileName = path.basename(newFilePath);
-            copiedFiles.push(newFileName);
+            // Recursively copies files from folder
+            isFolder(filePath) ? fse.copySync(filePath, destFilePath) : fs.copyFileSync(filePath, destFilePath);
+            resolutions.push(fileData);
         } catch(err) {
-            console.error(err);
+            rejections.push({ fileData, error: err });
         }
     });
-    return copiedFiles;
+    return { resolutions, rejections };
 };

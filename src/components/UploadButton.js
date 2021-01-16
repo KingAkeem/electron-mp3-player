@@ -12,10 +12,10 @@ import { isFolder, copyToFolder } from '../lib/file';
 
 const selectFiles = () => {
     const dialgProperties = {
-        title: 'Select Music',
-        buttonLabel: 'Save Songs',
+        title: 'Select MP3s',
+        buttonLabel: 'Add Songs',
         filters: [{name: 'Music', extensions: ['mp3']}],
-        properties: [ 'openFile', 'multiSelections']
+        properties: ['openFile', 'multiSelections']
     };
     const paths = dialog.showOpenDialogSync(dialgProperties);
     return paths || [];
@@ -29,9 +29,11 @@ export const UploadButton = ({ onNewFiles }) => {
     const handleUpload = () => {
         const filePaths = selectFiles();
         const folderPaths = extractFolderPaths(filePaths);
-        copyToFolder(filePaths, 'music');
-        copyToFolder(folderPaths, 'music');
-        onNewFiles({ folders: folderPaths, files: filePaths });
+        const fileResults = copyToFolder(filePaths, 'music');
+        const folderResults = copyToFolder(folderPaths, 'music');
+        const resolutions = [...fileResults.resolutions, ...folderResults.resolutions];
+        const rejections = [...fileResults.rejections, ...folderResults.rejections];
+        onNewFiles({ resolutions, rejections });
     };
 
     return (

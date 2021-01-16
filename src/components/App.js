@@ -6,7 +6,9 @@ import { ExpandMore, ChevronRight, Delete, Stop, PlayCircleFilled, } from '@mate
 import { UploadButton } from './UploadButton';
 
 import fs from 'fs';
+
 import { playAudio } from '../lib/media-player/audio';
+import { isFolder } from '../lib/file';
 
 const FolderView = props => {
   const { folder, onNodeSelect } = props;
@@ -31,7 +33,7 @@ const FolderView = props => {
 const App = props => {
     const [track, setTrack] = useState(null);
     const [folder, setFolder] = useState(props.rootFolder);
-    const [selectedSong, setSelectedSong] = useState(null);
+    const [currentFilePath, setCurrentFilePath] = useState(null);
 
     // Determines if song is currently being played
     const isPlaying = song => track && track.track === song;
@@ -49,11 +51,11 @@ const App = props => {
     };
 
     const handlePlay = () => {
-        if (!selectedSong) return;
-        console.log('Playing', selectedSong);
-        playAudio(selectedSong).then(audio => {
+        if (!currentFilePath) return;
+        console.log('Playing', currentFilePath);
+        playAudio(currentFilePath).then(audio => {
             setTrack({
-                track: selectedSong,
+                track: currentFilePath,
                 audio,
                 playing: true
             });
@@ -63,14 +65,13 @@ const App = props => {
     const handleStop = () => stopAudio();
 
     const handleDelete = () => {
-        fs.unlinkSync(selectedSong);
-        if (isPlaying(selectedSong)) stopAudio();
-        setSelectedSong(null);
+        setFolder(folder.remove(currentFilePath));
+        if (isPlaying(currentFilePath)) stopAudio();
+        setCurrentFilePath(null);
     };
 
-    const handleNewFiles = ({ folders, files}) => {
-        console.log('New files', files);
-        console.log('New folders', folders);
+    const handleNewFiles = ({ resolutions, rejections }) => {
+        setFolder(folder.add(resolutions));
     };
 
     return (
@@ -83,11 +84,11 @@ const App = props => {
                 <IconButton onClick={handlePlay}>
                     <PlayCircleFilled/>
                 </IconButton>}
-            {selectedSong ?
+            {currentFilePath ?
                 <IconButton onClick={handleDelete}>
                     <Delete/>
                 </IconButton> : null}
-            <FolderView folder={folder} onNodeSelect={filePath => setSelectedSong(filePath)}/>
+            <FolderView folder={folder} onNodeSelect={filePath => setCurrentFilePath(filePath)}/>
         </div>
     );
 }
