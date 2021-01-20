@@ -22,7 +22,7 @@ const App = props => {
     const isPlaying = song => track && track.track === song;
 
     const stopAudio = () => {
-        if (track && track.audio) {
+        if (track && track.playing) {
             track.audio.pause();
             delete track.audio;
             setTrack({
@@ -34,9 +34,8 @@ const App = props => {
     };
 
     const handlePlay = () => {
-        // If track is already playing then do nothing.
-        if (track) return;
-        console.log('Playing', paths[0]);
+        // If track is already playing then stop it and start new track.
+        if (track && track.playing) stopAudio();
         playAudio(paths[0]).then(audio => {
             setTrack({
                 track: paths[0],

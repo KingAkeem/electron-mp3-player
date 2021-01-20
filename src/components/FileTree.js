@@ -6,7 +6,7 @@ export const FileTree = props => {
   const { root, onNodeSelect } = props;
   const renderFile = file => (
     <TreeItem key={file.id} nodeId={file.id} label={file.name}>
-      {file.type === 'folder' ? file.children.map(file => renderFile(file)) : null}
+      {file.type === 'folder' ? file.files.map(file => renderFile(file)) : null}
     </TreeItem>
   );
 
@@ -18,7 +18,7 @@ export const FileTree = props => {
       defaultExpandIcon={<FolderOpen />}
       onNodeSelect={(event, id) => onNodeSelect(id)}
     >
-      {root.children.map(subFolder => renderFile(subFolder))}
+      {root.files.map(subFolder => renderFile(subFolder))}
     </TreeView>
   );
 };

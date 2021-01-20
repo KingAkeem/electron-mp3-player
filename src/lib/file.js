@@ -1,9 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import fse from 'fs-extra';
-import {enableMapSet,immerable, produce} from 'immer';
+import {current, enableMapSet,immerable, produce} from 'immer';
 enableMapSet();
 
+/**
+ * Represents file in memory
+ */
 export class File {
     constructor({ id, name, path }) {
         this[immerable] = true;
@@ -14,52 +17,84 @@ export class File {
     }
 }
 
-const deleteFile = filePath => {
-    if (isFolder(filePath)) fs.rmdirSync(filePath, {
+/**
+ * Deletes file from memoery 
+ * @param {File} file 
+ */
+const deleteFile = file => {
+    if (file.type === 'folder') fs.rmdirSync(file.path, {
         recursive: true
     });
-    else fs.unlinkSync(filePath);
+    else fs.unlinkSync(file.path);
 };
 
-export class Folder {
-    constructor({ id, name, path, children }) {
+export class Folder extends File {
+    constructor({ id, name, path, files }) {
+        super({ id, name, path });
         this[immerable] = true;
-        this.id = id;
-        this.name = name;
-        this.path = path;
         this.type = 'folder';
-        this.children = Array.isArray(children) ? children : [];
-        this.childMap = new Map();
+        this.files = Array.isArray(files) ? files : [];
+        this.fileMap = new Map();
     }
 
+    /**
+     * Insert files into folder 
+     * @param {Array<File>} files 
+     * @returns {Folder} - this
+     */
     add(files) {
         return produce(this, draft => {
             files.forEach(file => {
-                if (!draft.childMap.has(file.id)) {
-                    draft.childMap.set(file.id, file);
-                    draft.children.push(file);
+                if (!draft.fileMap.has(file.id)) {
+                    draft.fileMap.set(file.id, file);
+                    draft.files.push(file);
                 }
             });
         });
     }
 
+    getFiles() {
+        return this.files;
+    }
+
+    /**
+     * Removes file from memory and local state 
+     * @param {File} file 
+     */
+    _removeFromMemory(file) {
+        deleteFile(file);
+        const files = this.getFiles();
+        const index = files.findIndex(f => f.path === file.path);
+        if (index === -1) return;
+        const [removedFile] = files.splice(index, 1);
+        this.fileMap.delete(removedFile.path)
+    }
+
+    /**
+     * Remove files from this folder or any of it's subfolders 
+     * @param {Array<string>} filePaths 
+     * @returns {Folder} - this
+     */
     remove(filePaths) {
-        return produce(this, draft => {
-            filePaths.forEach(filePath => {
-                for (let i = 0; i < draft.children.length; i++) {
-                    let file = draft.children[i];
-                    if (file.path === filePath) {
-                        deleteFile(filePath);
-                        const [removedFile] = draft.children.splice(i, 1);
-                        draft.childMap.delete(removedFile.id);
-                        return;
-                    }
-                    if (file.type === 'folder') file.remove(filePaths);
+        const removalSet = new Set(filePaths);
+        return produce(this, currentFolder => {
+            if (removalSet.size === 0) return;
+            const files = currentFolder.getFiles();
+            files.forEach(file => {
+                if (removalSet.has(file.path)) {
+                    currentFolder._removeFromMemory(file);
+                    // Update removal set
+                    removalSet.delete(file.path);
                 }
+                if (file.type === 'folder') file.remove(Array.from(removalSet));
             });
         });
     }
 
+    /**
+     * Builds folder tree structure
+     * @returns {Folder} - this
+     */
     loadContents() {
         const { folder, fileMap } = buildFolder(this);
         return produce(this, draft => {
@@ -69,6 +104,11 @@ export class Folder {
     }
 }
 
+/**
+ * Builds folder tree structure from memory 
+ * @param {Folder} folder 
+ * @param {Map<string, File>} fileMap 
+ */
 const buildFolder = (folder, fileMap = {}) => {
     // load contents before reading file
     fileMap[folder.id] = folder;
@@ -98,15 +138,30 @@ const buildFolder = (folder, fileMap = {}) => {
     return { folder, fileMap };
 };
 
+/**
+ * Creates folder if it doesn't exist. 
+ * @param {string} folderPath 
+ */
 function createFolder(folderPath) {
     if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath);
 };
 
+/**
+ * Determines if path leads to a folder 
+ * @param {string} filePath 
+ * @returns {boolean}
+ */
 export function isFolder(filePath) {
     const stat = fs.lstatSync(filePath);
     return stat.isDirectory();
 };
 
+/**
+ * Copies a list of files to a folder. 
+ * @param {Array<string>} filePaths 
+ * @param {string} folderPath 
+ * @returns {Object} - how many resolutions and rejections (rejections contain an error message)
+ */
 export function copyToFolder(filePaths, folderPath) {
     const resolutions = [];
     const rejections = [];
