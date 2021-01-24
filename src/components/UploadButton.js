@@ -25,7 +25,6 @@ const extractFolderPaths = filePaths => {
 
 export const UploadButton = ({ onNewFiles }) => {
     const handleUpload = () => {
-        const filePaths = selectFiles();
         const folderPaths = extractFolderPaths(filePaths);
         const fileResults = copyToFolder(filePaths, 'music');
         const folderResults = copyToFolder(folderPaths, 'music');

@@ -1,6 +1,6 @@
 import React from 'react'
 import { render } from 'react-dom'
-import { Folder } from './lib/file';
+import { File } from './lib/file';
 import App from './components/App'
 import './App.css'
 
@@ -10,7 +10,7 @@ let root = document.createElement('div')
 root.id = 'root'
 document.body.appendChild(root)
 
-const folder = new Folder({
+const folder = new File({
     id: 'music',
     name: 'music',
     path: 'music',
