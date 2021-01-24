@@ -1,6 +1,6 @@
 import React from 'react'
 import { render } from 'react-dom'
-import { File } from './lib/file';
+import { File, isFolder, createFolder } from './lib/file';
 import App from './components/App'
 import './App.css'
 
@@ -10,9 +10,9 @@ let root = document.createElement('div')
 root.id = 'root'
 document.body.appendChild(root)
 
+if (!isFolder('music')) createFolder('music'); 
 const folder = new File({
     id: 'music',
-    name: 'music',
-    path: 'music',
+    filePath: 'music',
 });
 render(<App rootFolder={folder.loadContents()}/>, document.getElementById('root'))

@@ -58,7 +58,7 @@ const App = props => {
         if (Array.isArray(rejections) && rejections.length) {
             rejections.forEach(rejection => {
                 const { fileData, error } = rejection;
-                console.error(`${fileData} encountered error: ${error}`);
+                console.error(`${JSON.stringify(fileData)} encountered error: ${error}`);
             });
         }
         setFolder(folder.add(newFiles));

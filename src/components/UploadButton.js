@@ -6,7 +6,9 @@ import { remote } from 'electron';
 const dialog = remote.dialog;
 import { remove } from 'lodash';
 
-import { isFolder, copyToFolder } from '../lib/file';
+import path from 'path';
+
+import { isFolder, copyToFolder, File } from '../lib/file';
 
 const selectFiles = () => {
     const dialgProperties = {
@@ -25,6 +27,19 @@ const extractFolderPaths = filePaths => {
 
 export const UploadButton = ({ onNewFiles }) => {
     const handleUpload = () => {
+        const filePaths = selectFiles();
+        const files = filePaths.map(filePath => {
+            const file = new File({
+                filePath,
+                id: filePath,
+            });
+            if (file.type === 'folder') {
+                const folder = file.loadContents();
+                return folder;
+            }
+            return file;
+        });
+        console.log('Files uploaded', files)
         const folderPaths = extractFolderPaths(filePaths);
         const fileResults = copyToFolder(filePaths, 'music');
         const folderResults = copyToFolder(folderPaths, 'music');

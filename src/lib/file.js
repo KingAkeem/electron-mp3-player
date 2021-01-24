@@ -23,12 +23,12 @@ const createFolderMap = children => {
 };
 
 export class File {
-    constructor({ id, name, path, children }) {
+    constructor({ id, filePath, children }) {
         this[immerable] = true;
         this.id = id;
-        this.name = name;
-        this.path = path;
-        this.type = isFolder(path) ? 'folder' : 'file';
+        this.name = path.basename(filePath);
+        this.path = filePath;
+        this.type = isFolder(filePath) ? 'folder' : 'file';
         // Files have no children
         this.children = this.type === 'folder' ? Array.isArray(children) ? children : [] : null;
         this.childMap = this.type === 'folder' ? createFolderMap(children) : null;
@@ -93,10 +93,16 @@ export class File {
      * @returns {File} - this
      */
     loadContents() {
-        const { folder, childMap } = buildFile(this);
+        if (isFolder(this.path)) {
+            this.type = 'folder';
+            this.children = [];
+            this.childMap = new Map();
+        } else {
+            throw new Error(`File is not a folder. File ID: ${this.id}`);
+        }
+        const { folder } = buildFolder(this);
         return produce(this, draft => {
             draft = Object.assign(draft, folder);
-            draft.childMap = new Map(Object.entries(childMap));
         });
     }
 }
@@ -104,42 +110,32 @@ export class File {
 /**
  * Builds folder tree structure from memory 
  * @param {File} folder 
- * @param {Map<string, File>} childMap 
  */
-const buildFile = (folder, childMap = {}) => {
+const buildFolder = folder => {
+    const insertFile = file => folder = folder.add([file]);
+    const insertFolder = subFolder => {
+        const loadedFolder = subFolder.loadContents();
+        buildFolder(loadedFolder);
+        insertFile(loadedFolder);
+    };
     // load contents before reading file
-    childMap[folder.id] = folder;
     const fileNames = fs.readdirSync(folder.path);
     fileNames.forEach(fileName => {
         const filePath = path.join(folder.path, fileName)
-        if (isFolder(filePath)) {
-            let subFile = new File({
-                id: filePath,
-                path: filePath,
-                name: fileName,
-            });
-            childMap[subFile.id] = subFile;
-            subFile = subFile.loadContents();
-            folder = folder.add([subFile]);
-            buildFile(subFile);
-        } else {
-            const fileInFile = new File({
-                id: filePath,
-                path: filePath,
-                name: fileName,
-            });
-            childMap[fileInFile.id] = fileInFile;
-            folder = folder.add([fileInFile]);
-        }
+        const file = new File({
+            id: filePath,
+            filePath,
+        });
+        file.type === 'folder' ? insertFolder(file) : insertFile(file);
     });
-    return { folder, childMap };
+    return { folder };
 };
 
 /**
  * Creates folder if it doesn't exist. 
  * @param {string} folderPath 
  */
-function createFolder(folderPath) {
+export function createFolder(folderPath) {
     if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath);
 };
 
@@ -149,8 +145,12 @@ function createFolder(folderPath) {
  * @returns {boolean}
  */
 export function isFolder(filePath) {
-    const stat = fs.lstatSync(filePath);
-    return stat.isDirectory();
+    try {
+        const stat = fs.lstatSync(filePath);
+        return stat.isDirectory();
+    } catch (err) {
+        return false;
+    }
 };
 
 /**
@@ -167,14 +167,13 @@ export function copyToFolder(filePaths, folderPath) {
     filePaths.forEach(filePath => {
         const fileName = path.basename(filePath);
         const destFilePath = path.join(folderPath, fileName);
-        const file = new File({
-            name: fileName,
-            path: destFilePath,
-            id: destFilePath
+        let file = new File({
+            id: destFilePath,
+            filePath: destFilePath
         });
         try {
             // Recursively copies children from folder
-            if (file.type === 'folder') {
+            if (isFolder(filePath)) {
                 fse.copySync(filePath, destFilePath)
                 file = file.loadContents();
             } else {
