@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
+import ReactDOM from 'react-dom';
 import { createMuiTheme, IconButton, Paper, ThemeProvider } from '@material-ui/core';
-import {  Delete, Stop, PlayCircleFilled, } from '@material-ui/icons';
+import {  Delete, Stop, PlayCircleFilled, CreateNewFolder, } from '@material-ui/icons';
 
 import { FileTree } from './FileTree';
 import { UploadButton } from './UploadButton';
 
 import { playAudio } from '../lib/media-player/audio';
+import { ipcRenderer }  from 'electron';
 
 const darkTheme = createMuiTheme({
     palette: {
@@ -16,6 +18,10 @@ const darkTheme = createMuiTheme({
 const FileExt = {
     MP3: '.mp3',
 };
+
+const DraggableApp = () => {
+    return <p>Hello World</p>;
+}
 
 const App = props => {
     const [track, setTrack] = useState(null);
@@ -102,6 +108,11 @@ const App = props => {
                 <ThemeProvider theme={darkTheme}>
                     <Paper>
                     <UploadButton onNewFiles={handleNewFiles}/>
+                    <IconButton onClick={() => {
+                            ipcRenderer.send('create-folder');
+                        }}>
+                        <CreateNewFolder/>
+                    </IconButton>
                     {renderPlay()}
                     {renderStop()}
                     {renderDelete()}

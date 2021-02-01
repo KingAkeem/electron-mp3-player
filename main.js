@@ -1,10 +1,23 @@
 const path = require('path')
 const url = require('url')
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 
 let mainWindow
 
 let isDev = false
+
+ipcMain.on('create-folder', () => {
+	const creationWin = new BrowserWindow({ parent: mainWindow, modal: true });
+	const draggableUrl = url.format({
+		protocol: 'file:',
+		pathname: path.join(__dirname, 'folder.html'),
+		slashes: true,
+	});
+	creationWin.loadURL(draggableUrl);
+	creationWin.once('ready-to-show', () => {
+		creationWin.show();
+	});
+});
 
 if (
 	process.env.NODE_ENV !== undefined &&

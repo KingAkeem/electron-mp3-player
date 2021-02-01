@@ -15,7 +15,7 @@ export const FileTree = props => {
   const renderFile = file => {
     if (checkFilter(file)) {
       return (
-        <TreeItem key={file.id} nodeId={file.id} label={file.name}>
+        <TreeItem id={file.id} key={file.id} nodeId={file.id} label={file.name}>
           {file.type === 'folder' ? file.children.map(file => renderFile(file)) : null}
         </TreeItem>
       );
@@ -28,7 +28,9 @@ export const FileTree = props => {
       defaultCollapseIcon={<Folder />}
       defaultExpanded={['root']}
       defaultExpandIcon={<FolderOpen />}
-      onNodeSelect={(event, id) => onNodeSelect(id)}
+      onNodeSelect={(event, ids) => {
+        onNodeSelect(ids);
+      }}
     >
       {root.children.map(subFolder => renderFile(subFolder))}
     </TreeView>
