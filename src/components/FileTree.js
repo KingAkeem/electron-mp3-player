@@ -5,14 +5,14 @@ import path from 'path';
 
 export const FileTree = props => {
   const { root, onNodeSelect, fileExtFilter } = props;
+  // Check if the file passes the current filter
   const checkFilter = file => {
-    // Folders are always rendered
     if (file.type === 'folder') return true;
     const extension = path.extname(file.path);
     return !fileExtFilter || extension === fileExtFilter;
   };
+  // render files that pass the filter
   const renderFile = file => {
-    // Only files passing the filter can be rendered
     if (checkFilter(file)) {
       return (
         <TreeItem key={file.id} nodeId={file.id} label={file.name}>

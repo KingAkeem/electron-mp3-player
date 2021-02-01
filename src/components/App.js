@@ -68,12 +68,13 @@ const App = props => {
                 <ThemeProvider theme={darkTheme}>
                     <Paper>
                     <UploadButton onNewFiles={handleNewFiles}/>
-                    {paths.length === 1 ? track && track.playing ?
-                        <IconButton onClick={handleStop}>
-                            <Stop/>
-                        </IconButton> :
+                    {paths.length === 1 && (!track  || !track.playing) ? 
                         <IconButton onClick={handlePlay}>
                             <PlayCircleFilled/>
+                        </IconButton> : null}
+                    {track && track.playing ?
+                        <IconButton onClick={handleStop}>
+                            <Stop/>
                         </IconButton> : null}
                     {paths.length > 0 ?
                         <IconButton onClick={handleDelete}>

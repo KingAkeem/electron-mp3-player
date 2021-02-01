@@ -18,7 +18,6 @@ const selectFiles = () => {
     return paths || [];
 };
 
-
 export const UploadButton = ({ onNewFiles }) => {
     const handleUpload = () => {
         const filePaths = selectFiles();
@@ -34,7 +33,6 @@ export const UploadButton = ({ onNewFiles }) => {
             return file;
         };
         const files = filePaths.map(toFile);
-        console.log('Files uploaded', files)
         files.forEach(file => file.copy('music'));
         onNewFiles(files);
     };
