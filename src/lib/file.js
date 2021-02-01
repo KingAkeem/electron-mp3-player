@@ -88,6 +88,22 @@ export class File {
         });
     }
 
+    copy(destFolderPath) {
+        // Create folder if it doesn't exist.
+        createFolder(destFolderPath);
+        // Recursively copies children from folder
+        if (this.type === 'folder') {
+            const newFolder = path.join(destFolderPath, this.name);
+            fse.copySync(this.path, newFolder)
+            produce(this, draft => {
+                // Re-load folder
+                draft = draft.loadContents();
+            });
+        } else {
+            fs.copyFileSync(this.path, destFolderPath)
+        }
+    }
+
     /**
      * Builds folder tree structure
      * @returns {File} - this
@@ -151,38 +167,4 @@ export function isFolder(filePath) {
     } catch (err) {
         return false;
     }
-};
-
-/**
- * Copies a list of children to a folder. 
- * @param {Array<string>} filePaths 
- * @param {string} folderPath 
- * @returns {Object} - how many resolutions and rejections (rejections contain an error message)
- */
-export function copyToFolder(filePaths, folderPath) {
-    const resolutions = [];
-    const rejections = [];
-    // Create folder if it doesn't exist.
-    createFolder(folderPath);
-    filePaths.forEach(filePath => {
-        const fileName = path.basename(filePath);
-        const destFilePath = path.join(folderPath, fileName);
-        let file = new File({
-            id: destFilePath,
-            filePath: destFilePath
-        });
-        try {
-            // Recursively copies children from folder
-            if (isFolder(filePath)) {
-                fse.copySync(filePath, destFilePath)
-                file = file.loadContents();
-            } else {
-                fs.copyFileSync(filePath, destFilePath)
-            }
-            resolutions.push(file);
-        } catch(err) {
-            rejections.push({ fileData: file, error: err });
-        }
-    });
-    return { resolutions, rejections };
 };

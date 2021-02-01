@@ -4,11 +4,8 @@ import { IconButton } from '@material-ui/core';
 
 import { remote } from 'electron';
 const dialog = remote.dialog;
-import { remove } from 'lodash';
 
-import path from 'path';
-
-import { isFolder, copyToFolder, File } from '../lib/file';
+import { File } from '../lib/file';
 
 const selectFiles = () => {
     const dialgProperties = {
@@ -21,14 +18,11 @@ const selectFiles = () => {
     return paths || [];
 };
 
-const extractFolderPaths = filePaths => {
-    return remove(filePaths, filePath => isFolder(filePath));
-};
 
 export const UploadButton = ({ onNewFiles }) => {
     const handleUpload = () => {
         const filePaths = selectFiles();
-        const files = filePaths.map(filePath => {
+        const toFile = filePath => {
             const file = new File({
                 filePath,
                 id: filePath,
@@ -38,14 +32,11 @@ export const UploadButton = ({ onNewFiles }) => {
                 return folder;
             }
             return file;
-        });
+        };
+        const files = filePaths.map(toFile);
         console.log('Files uploaded', files)
-        const folderPaths = extractFolderPaths(filePaths);
-        const fileResults = copyToFolder(filePaths, 'music');
-        const folderResults = copyToFolder(folderPaths, 'music');
-        const resolutions = [...fileResults.resolutions, ...folderResults.resolutions];
-        const rejections = [...fileResults.rejections, ...folderResults.rejections];
-        onNewFiles({ resolutions, rejections });
+        files.forEach(file => file.copy('music'));
+        onNewFiles(files);
     };
 
     return (

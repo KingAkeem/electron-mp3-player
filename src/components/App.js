@@ -13,6 +13,11 @@ const darkTheme = createMuiTheme({
         type: 'dark'
     }
 });
+
+const FileExt = {
+    MP3: '.mp3',
+};
+
 const App = props => {
     const [track, setTrack] = useState(null);
     const [folder, setFolder] = useState(props.rootFolder);
@@ -54,13 +59,7 @@ const App = props => {
         });
     };
 
-    const handleNewFiles = ({ resolutions: newFiles, rejections }) => {
-        if (Array.isArray(rejections) && rejections.length) {
-            rejections.forEach(rejection => {
-                const { fileData, error } = rejection;
-                console.error(`${JSON.stringify(fileData)} encountered error: ${error}`);
-            });
-        }
+    const handleNewFiles = newFiles => {
         setFolder(folder.add(newFiles));
     };
 
@@ -80,7 +79,7 @@ const App = props => {
                         <IconButton onClick={handleDelete}>
                             <Delete/>
                         </IconButton> : null}
-                        <FileTree root={folder} onNodeSelect={filePaths => {
+                        <FileTree root={folder} fileExtFilter={FileExt.MP3} onNodeSelect={filePaths => {
                             setPaths(filePaths);
                         }}/>
                     </Paper>
